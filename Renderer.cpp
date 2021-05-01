@@ -70,6 +70,9 @@ void Renderer::init() {
         mMeshList.emplace_back(FirstMesh);
         mMeshList.emplace_back(SecondMesh);
 
+        mTestPlot = new dDensityPlot2D<40, 20>(1.0f, 0.5f, mGPU, mLogicalGPU, mGraphicsQueue, mGraphicsCommandPool);
+        mTestPlot -> generateBuffers();
+
         createCommandBuffers();
         recordCommands();
         createSynchronization();
@@ -739,16 +742,27 @@ void Renderer::recordCommands() {
         {
             vkCmdBindPipeline(mCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, mGraphicsPipeline);
 
-            for (auto& iMesh : mMeshList) {
+//            for (auto& iMesh : mMeshList) {
+//                VkBuffer VertexBuffers[] {
+//                        iMesh.getVertexBuffer()
+//                };
+//                VkDeviceSize Offsets[] { 0 };
+//
+//                vkCmdBindVertexBuffers(mCommandBuffers[i], 0, 1, VertexBuffers, Offsets);
+//                vkCmdBindIndexBuffer(mCommandBuffers[i], iMesh.getIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
+//                vkCmdDrawIndexed(mCommandBuffers[i], static_cast<uint32_t>(iMesh.getIndexCount()), 1, 0, 0, 0);
+//            }
+
+//            for (auto& iMesh : mMeshList) {
                 VkBuffer VertexBuffers[] {
-                        iMesh.getVertexBuffer()
+                        mTestPlot -> getVertexBuffer()
                 };
                 VkDeviceSize Offsets[] { 0 };
 
                 vkCmdBindVertexBuffers(mCommandBuffers[i], 0, 1, VertexBuffers, Offsets);
-                vkCmdBindIndexBuffer(mCommandBuffers[i], iMesh.getIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
-                vkCmdDrawIndexed(mCommandBuffers[i], static_cast<uint32_t>(iMesh.getIndexCount()), 1, 0, 0, 0);
-            }
+                vkCmdBindIndexBuffer(mCommandBuffers[i], mTestPlot -> getIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
+                vkCmdDrawIndexed(mCommandBuffers[i], static_cast<uint32_t>(mTestPlot -> getIndexCount()), 1, 0, 0, 0);
+//            }
         }
 
         vkCmdEndRenderPass(mCommandBuffers[i]);
