@@ -45,7 +45,7 @@ private:
     std::vector <dVulkanMesh>       mMeshList;
     size_t                          mCurrentFrame                   = 0;
 
-    dDensityPlot2D <40, 20>*        mTestPlot                       = nullptr;
+    dDensityPlot2D <360, 50>*        mTestPlot                       = nullptr;
 
     //----------//
 

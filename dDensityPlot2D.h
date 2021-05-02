@@ -5,6 +5,7 @@
 #include <array>
 #include <vector>
 #include <iostream>
+#include <random>
 //-----------------------------//
 #include "dPlotMeshBase.h"
 //-----------------------------//
@@ -24,15 +25,20 @@ public:
 
         //----------//
 
+        std::default_random_engine generator;
+        std::normal_distribution<float> distribution(0.5, 0.5);
+
         for (size_t iRow = 0; iRow < Vert; iRow++) {
             for (size_t iColumn = 0; iColumn < Horiz; iColumn++) {
-                mVertices[iRow * Horiz + iColumn].mPos[0]       = tWidth / float(Horiz - 1) * float(iColumn);               //---x---//
-                mVertices[iRow * Horiz + iColumn].mPos[1]       = tHeight / float(Vert - 1) * float(iRow);                  //---y---//
+                mVertices[iRow * Horiz + iColumn].mPos[0]       = tWidth / float(Horiz - 1) * float(iColumn);           //---x---//
+                mVertices[iRow * Horiz + iColumn].mPos[1]       = tHeight / float(Vert - 1) * float(iRow);              //---y---//
                 mVertices[iRow * Horiz + iColumn].mPos[2]       = 0.0f;                                                 //---z---//
 
                 mVertices[iRow * Horiz + iColumn].mColor[0]     = 1.0f;                                                 //---red---//
                 mVertices[iRow * Horiz + iColumn].mColor[1]     = 1.0f;                                                 //---green---//
                 mVertices[iRow * Horiz + iColumn].mColor[2]     = 1.0f;                                                 //---blue---//
+
+                mMesh[iRow][iColumn] = distribution(generator);
             }
         }
 
@@ -52,10 +58,61 @@ public:
     //----------//
 
     void addColor(float tVal, float tRed, float tGreen, float tBlue) {
-        mGradient.emplace_back({tVal, tRed, tGreen, tBlue});
+        if (mGradient.empty()) {
+            mGradient.emplace_back(ColorPoint{tVal, tRed, tGreen, tBlue});
+        } else {
+            if (tVal > mGradient[mGradient.size() - 1].mVal) {
+                mGradient.emplace_back(ColorPoint{tVal, tRed, tGreen, tBlue});
+            } else if (tVal < mGradient[0].mVal) {
+                mGradient.emplace(mGradient.begin(), ColorPoint{tVal, tRed, tGreen, tBlue});
+            } else {
+                auto Iter = mGradient.begin();
+
+                for (size_t i = 0; i < mGradient.size() - 1; i++, Iter++) {
+                    if (tVal > mGradient[i].mVal && tVal < mGradient[i + 1].mVal) {
+                        mGradient.emplace(Iter + 1, ColorPoint{tVal, tRed, tGreen, tBlue});
+                        break;
+                    }
+                }
+            }
+        }
     }
 
     void generateBuffers() {
+        if (!mGradient.empty()) {
+            for (size_t iRow = 0; iRow < Vert; iRow++) {
+                for (size_t iColumn = 0; iColumn < Horiz; iColumn++) {
+                    if (mMesh[iRow][iColumn] >= mGradient.back().mVal) {
+                        mVertices[iRow * Horiz + iColumn].mColor[0] = mGradient.back().mColor[0];
+                        mVertices[iRow * Horiz + iColumn].mColor[1] = mGradient.back().mColor[1];
+                        mVertices[iRow * Horiz + iColumn].mColor[2] = mGradient.back().mColor[2];
+
+                        continue;
+                    }
+
+                    if (mMesh[iRow][iColumn] <= mGradient.front().mVal) {
+                        mVertices[iRow * Horiz + iColumn].mColor[0] = mGradient.front().mColor[0];
+                        mVertices[iRow * Horiz + iColumn].mColor[1] = mGradient.front().mColor[1];
+                        mVertices[iRow * Horiz + iColumn].mColor[2] = mGradient.front().mColor[2];
+
+                        continue;
+                    }
+
+                    for (size_t i = 0; i < mGradient.size() - 1; i++) {
+                        if (mMesh[iRow][iColumn] > mGradient[i].mVal && mMesh[iRow][iColumn] < mGradient[i + 1].mVal) {
+                            float Multiplier = (mMesh[iRow][iColumn] - mGradient[i].mVal) / (mGradient[i + 1].mVal - mGradient[i].mVal);
+
+                            mVertices[iRow * Horiz + iColumn].mColor[0] = mGradient[i].mColor[0] + (mGradient[i + 1].mColor[0] - mGradient[i].mColor[0]) * Multiplier;
+                            mVertices[iRow * Horiz + iColumn].mColor[1] = mGradient[i].mColor[1] + (mGradient[i + 1].mColor[1] - mGradient[i].mColor[1]) * Multiplier;
+                            mVertices[iRow * Horiz + iColumn].mColor[2] = mGradient[i].mColor[2] + (mGradient[i + 1].mColor[2] - mGradient[i].mColor[2]) * Multiplier;
+
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
         createVertexBuffer(mTransferQueue, mCommandPool, mVertices.data(), mVertices.size());
         createIndexBuffer(mTransferQueue, mCommandPool, mIndices.data(), mIndices.size());
     }
@@ -69,7 +126,7 @@ public:
         return mIndices.size();
     }
 private:
-    struct GradientPoint {
+    struct ColorPoint {
         float mVal;
         float mColor[3];
     };
@@ -81,7 +138,7 @@ private:
     std::array <Vertex, Horiz * Vert>                           mVertices;
     std::array <uint32_t, (Horiz - 1) * (Vert - 1) * 3 * 2>     mIndices;                                               //---(n-1 * (n-1) quads that consist of 2 triangles drawn with 6 indices---//
 
-    std::vector <GradientPoint>                                 mGradient;
+    std::vector <ColorPoint>                                    mGradient;
 };
 //-----------------------------//
 #endif

@@ -70,7 +70,14 @@ void Renderer::init() {
         mMeshList.emplace_back(FirstMesh);
         mMeshList.emplace_back(SecondMesh);
 
-        mTestPlot = new dDensityPlot2D<40, 20>(1.0f, 0.5f, mGPU, mLogicalGPU, mGraphicsQueue, mGraphicsCommandPool);
+        mTestPlot = new dDensityPlot2D<360, 50>(1.0f, 1.0f, mGPU, mLogicalGPU, mGraphicsQueue, mGraphicsCommandPool);
+        mTestPlot -> addColor(1.0, 0.5, 0.0, 0.0);
+        mTestPlot -> addColor(0.0, 0.0, 0.0, 0.5);
+        mTestPlot -> addColor(0.1, 0.0, 0.0, 1.0);
+        mTestPlot -> addColor(0.9, 1.0, 0.0, 0.0);
+        mTestPlot -> addColor(0.3, 0.0, 1.0, 1.0);
+        mTestPlot -> addColor(0.6, 1.0, 1.0, 0.0);
+
         mTestPlot -> generateBuffers();
 
         createCommandBuffers();
