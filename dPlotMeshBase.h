@@ -24,11 +24,30 @@ public:
 
     //----------//
 
+    ///---TODO: rename this somehow---///
+    void setVulkanStuff(VkPhysicalDevice tGPU,                   VkDevice tLogicalGPU,
+                        VkQueue tTransferQueue,                  VkCommandPool tTransferCommandPool);
+    void addColor(float tVal, float tRed, float tGreen, float tBlue);
+
+    //----------//
+
+    virtual void generateBuffers() = 0;
+
     VkBuffer* getVertexBuffer(size_t iNum);
     VkBuffer* getIndexBuffer();
 
+    size_t getVertexCount();
+    size_t getIndexCount();
+
     void destroyBuffers();
 protected:
+    struct ColorPoint {
+        float mVal;
+        float mColor[3];
+    };
+
+    //----------//
+
     std::vector <VkBuffer>              mVertexBuffers;
     std::vector <VkDeviceMemory>        mVertexBuffersMemory;
 
@@ -40,6 +59,13 @@ protected:
 
     VkQueue                             mTransferQueue          = VK_NULL_HANDLE;
     VkCommandPool                       mCommandPool            = VK_NULL_HANDLE;
+
+    //----------//
+
+    std::vector <Vertex>                mVertices;
+    std::vector <uint32_t>              mIndices;
+
+    std::vector <ColorPoint>            mGradient;
 
     //----------//
 

@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
                 }
             }
 
-            VulkanRenderer -> draw();
+//            VulkanRenderer -> draw();
         }
     } catch (const std::runtime_error& tExcept) {
         std::cout << tExcept.what() << std::endl;

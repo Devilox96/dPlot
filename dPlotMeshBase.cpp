@@ -9,11 +9,46 @@ dPlotMeshBase::dPlotMeshBase() {
     mVertexBuffersMemory.resize(3);
 }
 //-----------------------------//
+void dPlotMeshBase::setVulkanStuff( VkPhysicalDevice tGPU,                   VkDevice tLogicalGPU,
+                                    VkQueue tTransferQueue,                  VkCommandPool tTransferCommandPool) {
+    mGPU            = tGPU;
+    mLogicalGPU     = tLogicalGPU;
+    mTransferQueue  = tTransferQueue;
+    mCommandPool    = tTransferCommandPool;
+}
+void dPlotMeshBase::addColor(float tVal, float tRed, float tGreen, float tBlue) {
+    if (mGradient.empty()) {
+        mGradient.emplace_back(ColorPoint{tVal, tRed, tGreen, tBlue});
+    } else {
+        if (tVal > mGradient[mGradient.size() - 1].mVal) {
+            mGradient.emplace_back(ColorPoint{tVal, tRed, tGreen, tBlue});
+        } else if (tVal < mGradient[0].mVal) {
+            mGradient.emplace(mGradient.begin(), ColorPoint{tVal, tRed, tGreen, tBlue});
+        } else {
+            auto Iter = mGradient.begin();
+
+            for (size_t i = 0; i < mGradient.size() - 1; i++, Iter++) {
+                if (tVal > mGradient[i].mVal && tVal < mGradient[i + 1].mVal) {
+                    mGradient.emplace(Iter + 1, ColorPoint{tVal, tRed, tGreen, tBlue});
+                    break;
+                }
+            }
+        }
+    }
+}
+//-----------------------------//
 VkBuffer* dPlotMeshBase::getVertexBuffer(size_t iNum) {
     return &mVertexBuffers[iNum];
 }
 VkBuffer* dPlotMeshBase::getIndexBuffer() {
     return &mIndexBuffer;
+}
+
+size_t dPlotMeshBase::getVertexCount() {
+    return mVertices.size();
+}
+size_t dPlotMeshBase::getIndexCount() {
+    return mIndices.size();
 }
 
 void dPlotMeshBase::destroyBuffers() {
