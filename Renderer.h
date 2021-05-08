@@ -18,6 +18,7 @@
 #include <SDL2/SDL_vulkan.h>
 //-----------------------------//
 #include "dVulkanMesh.h"
+#include "dDensityPlot2D.h"
 //-----------------------------//
 class Renderer {
 public:
@@ -31,7 +32,14 @@ public:
     void setDebugMode(bool tState);
 
     void init();
-    void draw();
+
+    ///---TODO: make outside casting to deal with plots' dimensions---///
+    void draw(const std::vector <std::vector <float>>& tNewData);
+
+    void addDensityPlot2D(float tPosX,      float tPosY,    float tPosZ,
+                          float tWidth,     float tHeight,
+                          size_t tHoriz,    size_t tVert);
+    void addPlotGradientColor(size_t tPlotNum, float tVal, float tRed, float tGreen, float tBlue);
 private:
     std::string                     mAppName;
     uint32_t                        mAppVersion                     = 0;
@@ -41,8 +49,9 @@ private:
     //----------//
 
     SDL_Window*                     mWindow                         = nullptr;
-    std::vector <dVulkanMesh>       mMeshList;
     size_t                          mCurrentFrame                   = 0;
+
+    std::vector <VkBuffer*>         mPlotBuffers;
 
     //----------//
 
@@ -82,6 +91,10 @@ private:
     std::vector <VkSemaphore>       mImageAvailable;
     std::vector <VkSemaphore>       mRenderFinished;
     std::vector <VkFence>           mDrawFences;
+
+    //----------//
+
+    std::vector <dPlotMeshBase*>    mPlots;
 
     //----------//
 

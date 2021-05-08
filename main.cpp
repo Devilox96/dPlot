@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
                 }
             }
 
-            VulkanRenderer -> draw();
+//            VulkanRenderer -> draw();
         }
     } catch (const std::runtime_error& tExcept) {
         std::cout << tExcept.what() << std::endl;
@@ -53,37 +53,6 @@ int main(int argc, char** argv) {
     SDL_Quit();
 
     //----------//
-
-//
-//    //----------//
-//
-//    try {
-////        Renderer Rend(Window, true);
-//
-//        while (Run) {
-//            while (SDL_PollEvent(&Event)) {
-//                if (Event.type == SDL_QUIT) {
-//                    Run = false;
-//                } else if (Event.type == SDL_WINDOWEVENT) {
-//                    if (Event.window.event == SDL_WINDOWEVENT_RESIZED) {
-////                        Rend.setResized();
-//                    }
-//                }
-//            }
-//
-////            Rend.drawFrame();
-//        }
-//
-//        //----------//
-//
-////        vkDeviceWaitIdle(Rend.getDevice());
-//
-//        SDL_DestroyWindow(Window);
-//        SDL_Quit();
-//    } catch (const std::exception& tExcept) {
-//        std::cerr << tExcept.what() << std::endl;
-//        return -1;
-//    }
 
     return 0;
 }

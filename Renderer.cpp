@@ -42,33 +42,21 @@ void Renderer::init() {
         createFrameBuffers();
         createCommandPool();
 
-        std::vector <dVulkanMesh::Vertex> meshVertices {
-                {{  -0.1f,  -0.4f,  0.0f}, {1.0f,   0.0f,   0.0f}},
-                {{  -0.1f,  0.4f,   0.0f}, {0.0f,   1.0f,   0.0f}},
-                {{  -0.9f,  0.4f,   0.0f}, {0.0f,   0.0f,   1.0f}},
-                {{  -0.9f,  -0.4f,  0.0f}, {1.0f,   1.0f,   0.0f}}
-        };
+        //----------//
 
-        std::vector <dVulkanMesh::Vertex> meshVertices2 {
-                {{  0.9f,   -0.3f,  0.0f}, {1.0f,   0.0f,   0.0f}},
-                {{  0.9f,   0.1f,   0.0f}, {0.0f,   1.0f,   0.0f}},
-                {{  0.1f,   0.3f,   0.0f}, {0.0f,   0.0f,   1.0f}},
-                {{  0.1f,   -0.3f,  0.0f}, {1.0f,   1.0f,   0.0f}}
-        };
+        //---Don't know if I ever need to set different queues and command pools---//
+        for (auto iPlot : mPlots) {
+            iPlot -> setVulkanStuff(mGPU, mLogicalGPU, mGraphicsQueue, mGraphicsCommandPool);
+            iPlot -> generateBuffers();
+        }
 
-        std::vector <uint32_t> meshIndices {
-                0, 1, 2,
-                2, 3, 0
-        };
+        mPlotBuffers.resize(mSwapchainFrameBuffers.size());
 
+        for (size_t i = 0; i < 3; i++) {
+            mPlotBuffers[i] = mPlots[0] -> getVertexBuffer(i);
+        }
 
-        dVulkanMesh FirstMesh(mGPU, mLogicalGPU, mGraphicsQueue, mGraphicsCommandPool, meshVertices, meshIndices);
-        dVulkanMesh SecondMesh(mGPU, mLogicalGPU, mGraphicsQueue, mGraphicsCommandPool, meshVertices2, meshIndices);
-
-        mMeshList.reserve(2);
-
-        mMeshList.emplace_back(FirstMesh);
-        mMeshList.emplace_back(SecondMesh);
+        //----------//
 
         createCommandBuffers();
         recordCommands();
@@ -79,27 +67,31 @@ void Renderer::init() {
         throw;
     }
 }
-void Renderer::draw() {
+
+///---TODO: fix this function---///
+void Renderer::draw(const std::vector <std::vector <float>>& tNewData) {
     vkWaitForFences(mLogicalGPU, 1, &mDrawFences[mCurrentFrame], VK_TRUE, std::numeric_limits <uint64_t>::max());
     vkResetFences(mLogicalGPU, 1, &mDrawFences[mCurrentFrame]);
 
     uint32_t ImageIndex;
     vkAcquireNextImageKHR(mLogicalGPU, mSwapchain, std::numeric_limits <uint64_t>::max(), mImageAvailable[mCurrentFrame], VK_NULL_HANDLE, &ImageIndex);
 
+    dynamic_cast<dDensityPlot2D*>(mPlots[0]) -> updateValues(tNewData, ImageIndex);
+
     VkPipelineStageFlags WaitStages[] {
-        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
     };
 
     VkSubmitInfo SubmitInfo {
-        .sType                  = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-        .pNext                  = nullptr,
-        .waitSemaphoreCount     = 1,
-        .pWaitSemaphores        = &mImageAvailable[mCurrentFrame],
-        .pWaitDstStageMask      = WaitStages,
-        .commandBufferCount     = 1,
-        .pCommandBuffers        = &mCommandBuffers[ImageIndex],
-        .signalSemaphoreCount   = 1,
-        .pSignalSemaphores      = &mRenderFinished[mCurrentFrame]
+            .sType                  = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+            .pNext                  = nullptr,
+            .waitSemaphoreCount     = 1,
+            .pWaitSemaphores        = &mImageAvailable[mCurrentFrame],
+            .pWaitDstStageMask      = WaitStages,
+            .commandBufferCount     = 1,
+            .pCommandBuffers        = &mCommandBuffers[ImageIndex],
+            .signalSemaphoreCount   = 1,
+            .pSignalSemaphores      = &mRenderFinished[mCurrentFrame]
     };
 
     if (vkQueueSubmit(mGraphicsQueue, 1, &SubmitInfo, mDrawFences[mCurrentFrame])) {
@@ -107,13 +99,13 @@ void Renderer::draw() {
     }
 
     VkPresentInfoKHR PresentInfo {
-        .sType                  = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-        .pNext                  = nullptr,
-        .waitSemaphoreCount     = 1,
-        .pWaitSemaphores        = &mRenderFinished[mCurrentFrame],
-        .swapchainCount         = 1,
-        .pSwapchains            = &mSwapchain,
-        .pImageIndices          = &ImageIndex
+            .sType                  = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+            .pNext                  = nullptr,
+            .waitSemaphoreCount     = 1,
+            .pWaitSemaphores        = &mRenderFinished[mCurrentFrame],
+            .swapchainCount         = 1,
+            .pSwapchains            = &mSwapchain,
+            .pImageIndices          = &ImageIndex
     };
 
     if (vkQueuePresentKHR(mPresentationQueue, &PresentInfo)) {
@@ -121,6 +113,15 @@ void Renderer::draw() {
     }
 
     mCurrentFrame = (mCurrentFrame + 1) % mMaxQueueImages;
+}
+
+void Renderer::addDensityPlot2D(float tPosX,    float tPosY,    float tPosZ,
+                                float tWidth,   float tHeight,
+                                size_t tHoriz,  size_t tVert) {
+    mPlots.emplace_back(new dDensityPlot2D(tPosX, tPosY, tPosZ, tWidth, tHeight, tHoriz, tVert));
+}
+void Renderer::addPlotGradientColor(size_t tPlotNum, float tVal, float tRed, float tGreen, float tBlue) {
+    mPlots[tPlotNum] -> addColor(tVal, tRed, tGreen, tBlue);
 }
 //-----------------------------//
 void Renderer::createInstance() {
@@ -176,7 +177,7 @@ void Renderer::setPhysicalDevice() {
         vkGetPhysicalDeviceProperties(iDevice, &Prop);
         std::cout << Prop.deviceName << std::endl;
 
-        if (    getGraphicsQueueFamilyIndex(iDevice) != -1                          &&
+        if (    getGraphicsQueueFamilyIndex(iDevice) != -1                  &&
                 getPresentationQueueFamilyIndex(iDevice, mSurface) != -1    &&
                 checkDeviceExtensions(iDevice)) {
             mGPU = iDevice;
@@ -418,24 +419,24 @@ void Renderer::createRenderPass() {
     };
 
     std::array <VkSubpassDependency, 2> SubpassDependencies {
-        VkSubpassDependency {
-                .srcSubpass         = VK_SUBPASS_EXTERNAL,
-                .dstSubpass         = 0,
-                .srcStageMask       = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-                .dstStageMask       = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                .srcAccessMask      = VK_ACCESS_MEMORY_READ_BIT,
-                .dstAccessMask      = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                .dependencyFlags    = 0
-        },
-        VkSubpassDependency {
-                .srcSubpass         = 0,
-                .dstSubpass         = VK_SUBPASS_EXTERNAL,
-                .srcStageMask       = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                .dstStageMask       = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-                .srcAccessMask      = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                .dstAccessMask      = VK_ACCESS_MEMORY_READ_BIT,
-                .dependencyFlags    = 0
-        }
+            VkSubpassDependency {
+                    .srcSubpass         = VK_SUBPASS_EXTERNAL,
+                    .dstSubpass         = 0,
+                    .srcStageMask       = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                    .dstStageMask       = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                    .srcAccessMask      = VK_ACCESS_MEMORY_READ_BIT,
+                    .dstAccessMask      = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                    .dependencyFlags    = 0
+            },
+            VkSubpassDependency {
+                    .srcSubpass         = 0,
+                    .dstSubpass         = VK_SUBPASS_EXTERNAL,
+                    .srcStageMask       = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                    .dstStageMask       = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+                    .srcAccessMask      = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                    .dstAccessMask      = VK_ACCESS_MEMORY_READ_BIT,
+                    .dependencyFlags    = 0
+            }
     };
 
     VkRenderPassCreateInfo RenderPassCreateInfo {
@@ -476,13 +477,13 @@ void Renderer::createPipeline() {
                     .pName      = "main"
             }
     };
-    
+
     VkVertexInputBindingDescription BindingDescription {
-        .binding    = 0,
-        .stride     = sizeof(dVulkanMesh::Vertex),
-        .inputRate  = VK_VERTEX_INPUT_RATE_VERTEX
+            .binding    = 0,
+            .stride     = sizeof(dVulkanMesh::Vertex),
+            .inputRate  = VK_VERTEX_INPUT_RATE_VERTEX
     };
-    
+
     std::array <VkVertexInputAttributeDescription, 2> AttributeDescriptions {
             VkVertexInputAttributeDescription {
                     .location = 0,
@@ -636,19 +637,19 @@ void Renderer::createFrameBuffers() {
 
     for (size_t i = 0; i < mSwapchainFrameBuffers.size(); i++) {
         std::array <VkImageView, 1> Attachments {
-            mSwapchainImageViews[i]
+                mSwapchainImageViews[i]
         };
 
         VkFramebufferCreateInfo FrameBufferCreateInfo {
-            .sType              = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-            .pNext              = nullptr,
-            .flags              = 0,
-            .renderPass         = mRenderPass,
-            .attachmentCount    = static_cast <uint32_t>(Attachments.size()),
-            .pAttachments       = Attachments.data(),
-            .width              = mExtent.width,
-            .height             = mExtent.height,
-            .layers             = 1
+                .sType              = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+                .pNext              = nullptr,
+                .flags              = 0,
+                .renderPass         = mRenderPass,
+                .attachmentCount    = static_cast <uint32_t>(Attachments.size()),
+                .pAttachments       = Attachments.data(),
+                .width              = mExtent.width,
+                .height             = mExtent.height,
+                .layers             = 1
         };
 
         if (vkCreateFramebuffer(mLogicalGPU, &FrameBufferCreateInfo, nullptr, &mSwapchainFrameBuffers[i])) {
@@ -658,10 +659,10 @@ void Renderer::createFrameBuffers() {
 }
 void Renderer::createCommandPool() {
     VkCommandPoolCreateInfo CommandPoolCreateInfo {
-        .sType              = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-        .pNext              = nullptr,
-        .flags              = 0,
-        .queueFamilyIndex   = static_cast <uint32_t>(getGraphicsQueueFamilyIndex(mGPU))
+            .sType              = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+            .pNext              = nullptr,
+            .flags              = 0,
+            .queueFamilyIndex   = static_cast <uint32_t>(getGraphicsQueueFamilyIndex(mGPU))
     };
 
     if (vkCreateCommandPool(mLogicalGPU, &CommandPoolCreateInfo, nullptr, &mGraphicsCommandPool)) {
@@ -672,11 +673,11 @@ void Renderer::createCommandBuffers() {
     mCommandBuffers.resize(mSwapchainFrameBuffers.size());
 
     VkCommandBufferAllocateInfo CommandBufferAllocateInfo {
-        .sType                  = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-        .pNext                  = nullptr,
-        .commandPool            = mGraphicsCommandPool,
-        .level                  = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-        .commandBufferCount     = static_cast <uint32_t>(mCommandBuffers.size())
+            .sType                  = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+            .pNext                  = nullptr,
+            .commandPool            = mGraphicsCommandPool,
+            .level                  = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+            .commandBufferCount     = static_cast <uint32_t>(mCommandBuffers.size())
     };
 
     if (vkAllocateCommandBuffers(mLogicalGPU, &CommandBufferAllocateInfo, mCommandBuffers.data())) {
@@ -689,13 +690,13 @@ void Renderer::createSynchronization() {
     mDrawFences.resize(mMaxQueueImages);
 
     VkSemaphoreCreateInfo SemaphoreCreateInfo {
-        .sType  = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO
+            .sType  = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO
     };
 
     VkFenceCreateInfo FenceCreateInfo {
-        .sType  = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-        .pNext  = nullptr,
-        .flags  = VK_FENCE_CREATE_SIGNALED_BIT
+            .sType  = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+            .pNext  = nullptr,
+            .flags  = VK_FENCE_CREATE_SIGNALED_BIT
     };
 
     for (size_t i = 0; i < mMaxQueueImages; i++) {
@@ -709,7 +710,7 @@ void Renderer::createSynchronization() {
 
 void Renderer::recordCommands() {
     VkCommandBufferBeginInfo CommandBufferBeginInfo {
-        .sType  = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO
+            .sType  = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO
     };
 
     VkClearValue ClearValues[] {
@@ -717,13 +718,13 @@ void Renderer::recordCommands() {
     };
 
     VkRenderPassBeginInfo RenderPassBeginInfo {
-        .sType          = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-        .pNext          = nullptr,
-        .renderPass     = mRenderPass
+            .sType          = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+            .pNext          = nullptr,
+            .renderPass     = mRenderPass
     };
 
     RenderPassBeginInfo.renderArea.extent   = mExtent,
-    RenderPassBeginInfo.renderArea.offset   = {0, 0};
+            RenderPassBeginInfo.renderArea.offset   = {0, 0};
     RenderPassBeginInfo.clearValueCount     = 1;
     RenderPassBeginInfo.pClearValues        = ClearValues;
 
@@ -739,16 +740,19 @@ void Renderer::recordCommands() {
         {
             vkCmdBindPipeline(mCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, mGraphicsPipeline);
 
-            for (auto& iMesh : mMeshList) {
-                VkBuffer VertexBuffers[] {
-                        iMesh.getVertexBuffer()
-                };
-                VkDeviceSize Offsets[] { 0 };
+//            VkBuffer VertexBuffers[] {
+//                mPlotBuffers[i]
+//            };
 
-                vkCmdBindVertexBuffers(mCommandBuffers[i], 0, 1, VertexBuffers, Offsets);
-                vkCmdBindIndexBuffer(mCommandBuffers[i], iMesh.getIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
-                vkCmdDrawIndexed(mCommandBuffers[i], static_cast<uint32_t>(iMesh.getIndexCount()), 1, 0, 0, 0);
-            }
+            VkDeviceSize Offsets[] { 0 };
+
+//            vkCmdBindVertexBuffers(mCommandBuffers[i], 0, 1, VertexBuffers, Offsets);
+            vkCmdBindVertexBuffers(mCommandBuffers[i], 0, 1, mPlotBuffers[i], Offsets);
+//            vkCmdBindIndexBuffer(mCommandBuffers[i], *mTestPlot -> getIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
+//            vkCmdDrawIndexed(mCommandBuffers[i], static_cast<uint32_t>(mTestPlot -> getIndexCount()), 1, 0, 0, 0);
+
+            vkCmdBindIndexBuffer(mCommandBuffers[i], *mPlots[0] -> getIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
+            vkCmdDrawIndexed(mCommandBuffers[i], static_cast<uint32_t>(mPlots[0] -> getIndexCount()), 1, 0, 0, 0);
         }
 
         vkCmdEndRenderPass(mCommandBuffers[i]);
@@ -762,8 +766,8 @@ void Renderer::recordCommands() {
 void Renderer::destroyAll() {
     vkDeviceWaitIdle(mLogicalGPU);
 
-    for (auto& iMesh : mMeshList) {
-        iMesh.destroyBuffers();
+    for (auto iPlot : mPlots) {
+        iPlot -> destroyBuffers();
     }
 
     for (size_t i = 0; i < mMaxQueueImages; i++) {
