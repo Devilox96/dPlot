@@ -7,6 +7,7 @@
 //-----------------------------//
 #include <cstring>
 #include <stdexcept>
+#include <vector>
 //-----------------------------//
 #include <vulkan/vulkan.h>
 //-----------------------------//
@@ -19,22 +20,26 @@ public:
 
     //----------//
 
-    VkBuffer getVertexBuffer();
-    VkBuffer getIndexBuffer();
+    dPlotMeshBase();
+
+    //----------//
+
+    VkBuffer* getVertexBuffer(size_t iNum);
+    VkBuffer* getIndexBuffer();
 
     void destroyBuffers();
 protected:
-    VkBuffer            mVertexBuffer           = VK_NULL_HANDLE;
-    VkDeviceMemory      mVertexBufferMemory     = VK_NULL_HANDLE;
+    std::vector <VkBuffer>              mVertexBuffers;
+    std::vector <VkDeviceMemory>        mVertexBuffersMemory;
 
-    VkBuffer            mIndexBuffer            = VK_NULL_HANDLE;
-    VkDeviceMemory      mIndexBufferMemory      = VK_NULL_HANDLE;
+    VkBuffer                            mIndexBuffer            = VK_NULL_HANDLE;
+    VkDeviceMemory                      mIndexBufferMemory      = VK_NULL_HANDLE;
 
-    VkPhysicalDevice    mGPU                    = VK_NULL_HANDLE;
-    VkDevice            mLogicalGPU             = VK_NULL_HANDLE;
+    VkPhysicalDevice                    mGPU                    = VK_NULL_HANDLE;
+    VkDevice                            mLogicalGPU             = VK_NULL_HANDLE;
 
-    VkQueue             mTransferQueue          = VK_NULL_HANDLE;
-    VkCommandPool       mCommandPool            = VK_NULL_HANDLE;
+    VkQueue                             mTransferQueue          = VK_NULL_HANDLE;
+    VkCommandPool                       mCommandPool            = VK_NULL_HANDLE;
 
     //----------//
 

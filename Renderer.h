@@ -32,7 +32,7 @@ public:
     void setDebugMode(bool tState);
 
     void init();
-    void draw();
+    void draw(const std::vector <std::vector <float>>& tNewData);
 private:
     std::string                     mAppName;
     uint32_t                        mAppVersion                     = 0;
@@ -45,7 +45,9 @@ private:
     std::vector <dVulkanMesh>       mMeshList;
     size_t                          mCurrentFrame                   = 0;
 
-    dDensityPlot2D <360, 50>*        mTestPlot                       = nullptr;
+    dDensityPlot2D <360, 50>*       mTestPlot                       = nullptr;
+
+    std::vector <VkBuffer*>         mPlotBuffers;
 
     //----------//
 

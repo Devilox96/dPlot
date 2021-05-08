@@ -54,36 +54,5 @@ int main(int argc, char** argv) {
 
     //----------//
 
-//
-//    //----------//
-//
-//    try {
-////        Renderer Rend(Window, true);
-//
-//        while (Run) {
-//            while (SDL_PollEvent(&Event)) {
-//                if (Event.type == SDL_QUIT) {
-//                    Run = false;
-//                } else if (Event.type == SDL_WINDOWEVENT) {
-//                    if (Event.window.event == SDL_WINDOWEVENT_RESIZED) {
-////                        Rend.setResized();
-//                    }
-//                }
-//            }
-//
-////            Rend.drawFrame();
-//        }
-//
-//        //----------//
-//
-////        vkDeviceWaitIdle(Rend.getDevice());
-//
-//        SDL_DestroyWindow(Window);
-//        SDL_Quit();
-//    } catch (const std::exception& tExcept) {
-//        std::cerr << tExcept.what() << std::endl;
-//        return -1;
-//    }
-
     return 0;
 }

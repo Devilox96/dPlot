@@ -4,16 +4,24 @@
 //-----------------------------//
 #include "dPlotMeshBase.h"
 //-----------------------------//
-VkBuffer dPlotMeshBase::getVertexBuffer() {
-    return mVertexBuffer;
+dPlotMeshBase::dPlotMeshBase() {
+    mVertexBuffers.resize(3);
+    mVertexBuffersMemory.resize(3);
 }
-VkBuffer dPlotMeshBase::getIndexBuffer() {
-    return mIndexBuffer;
+//-----------------------------//
+VkBuffer* dPlotMeshBase::getVertexBuffer(size_t iNum) {
+    return &mVertexBuffers[iNum];
+}
+VkBuffer* dPlotMeshBase::getIndexBuffer() {
+    return &mIndexBuffer;
 }
 
 void dPlotMeshBase::destroyBuffers() {
-    vkDestroyBuffer(mLogicalGPU, mVertexBuffer, nullptr);
-    vkFreeMemory(mLogicalGPU, mVertexBufferMemory, nullptr);
+    for (size_t i = 0; i < mVertexBuffers.size(); i++) {
+        vkDestroyBuffer(mLogicalGPU, mVertexBuffers[i], nullptr);
+        vkFreeMemory(mLogicalGPU, mVertexBuffersMemory[i], nullptr);
+    }
+
     vkDestroyBuffer(mLogicalGPU, mIndexBuffer, nullptr);
     vkFreeMemory(mLogicalGPU, mIndexBufferMemory, nullptr);
 }
@@ -36,15 +44,17 @@ void dPlotMeshBase::createVertexBuffer(VkQueue tTransferQueue, VkCommandPool tTr
     memcpy(Data, tVertices, static_cast <size_t>(BufferSize));
     vkUnmapMemory(mLogicalGPU, StagingBufferMemory);
 
-    createBuffer(
-            BufferSize,
-            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-            &mVertexBuffer,
-            &mVertexBufferMemory
-    );
+    for (size_t i = 0; i < mVertexBuffers.size(); i++) {
+        createBuffer(
+                BufferSize,
+                VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                &mVertexBuffers[i],
+                &mVertexBuffersMemory[i]
+        );
 
-    copyBuffer(tTransferQueue, tTransferCommandPool, StagingBuffer, mVertexBuffer, BufferSize);
+        copyBuffer(tTransferQueue, tTransferCommandPool, StagingBuffer, mVertexBuffers[i], BufferSize);
+    }
 
     vkDestroyBuffer(mLogicalGPU, StagingBuffer, nullptr);
     vkFreeMemory(mLogicalGPU, StagingBufferMemory, nullptr);

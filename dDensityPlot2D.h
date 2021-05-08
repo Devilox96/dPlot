@@ -3,7 +3,6 @@
 //
 //-----------------------------//
 #include <array>
-#include <vector>
 #include <iostream>
 #include <random>
 //-----------------------------//
@@ -15,7 +14,8 @@
 template <size_t Horiz, size_t Vert>
 class dDensityPlot2D : public dPlotMeshBase {
 public:
-    dDensityPlot2D(float tWidth,                            float tHeight,
+    dDensityPlot2D(float tPosX,                             float tPosY,                            float tPosZ,
+                   float tWidth,                            float tHeight,
                    VkPhysicalDevice tGPU,                   VkDevice tLogicalGPU,
                    VkQueue tTransferQueue,                  VkCommandPool tTransferCommandPool) {
         mGPU            = tGPU;
@@ -25,14 +25,14 @@ public:
 
         //----------//
 
-        std::default_random_engine generator;
-        std::normal_distribution<float> distribution(0.5, 0.5);
+        std::uniform_real_distribution<float> distribution(0.0, 1.0);
+
 
         for (size_t iRow = 0; iRow < Vert; iRow++) {
             for (size_t iColumn = 0; iColumn < Horiz; iColumn++) {
-                mVertices[iRow * Horiz + iColumn].mPos[0]       = tWidth / float(Horiz - 1) * float(iColumn);           //---x---//
-                mVertices[iRow * Horiz + iColumn].mPos[1]       = tHeight / float(Vert - 1) * float(iRow);              //---y---//
-                mVertices[iRow * Horiz + iColumn].mPos[2]       = 0.0f;                                                 //---z---//
+                mVertices[iRow * Horiz + iColumn].mPos[0]       = tWidth / float(Horiz - 1) * float(iColumn) + tPosX;   //---x---//
+                mVertices[iRow * Horiz + iColumn].mPos[1]       = tHeight / float(Vert - 1) * float(iRow) + tPosY;      //---y---//
+                mVertices[iRow * Horiz + iColumn].mPos[2]       = tPosZ;                                                //---z---//
 
                 mVertices[iRow * Horiz + iColumn].mColor[0]     = 1.0f;                                                 //---red---//
                 mVertices[iRow * Horiz + iColumn].mColor[1]     = 1.0f;                                                 //---green---//
@@ -125,6 +125,75 @@ public:
     size_t getIndexCount() {
         return mIndices.size();
     }
+
+    //----------//
+
+    ///---TODO: add size check---///
+    void updateValues(const std::vector <std::vector <float>>& tNewData, size_t iNum) {
+        for (size_t iRow = 0; iRow < Vert; iRow++) {
+            for (size_t iColumn = 0; iColumn < Horiz; iColumn++) {
+                mMesh[iRow][iColumn] = tNewData[iColumn][iRow];
+            }
+        }
+
+        if (!mGradient.empty()) {
+            for (size_t iRow = 0; iRow < Vert; iRow++) {
+                for (size_t iColumn = 0; iColumn < Horiz; iColumn++) {
+                    if (mMesh[iRow][iColumn] >= mGradient.back().mVal) {
+                        mVertices[iRow * Horiz + iColumn].mColor[0] = mGradient.back().mColor[0];
+                        mVertices[iRow * Horiz + iColumn].mColor[1] = mGradient.back().mColor[1];
+                        mVertices[iRow * Horiz + iColumn].mColor[2] = mGradient.back().mColor[2];
+
+                        continue;
+                    }
+
+                    if (mMesh[iRow][iColumn] <= mGradient.front().mVal) {
+                        mVertices[iRow * Horiz + iColumn].mColor[0] = mGradient.front().mColor[0];
+                        mVertices[iRow * Horiz + iColumn].mColor[1] = mGradient.front().mColor[1];
+                        mVertices[iRow * Horiz + iColumn].mColor[2] = mGradient.front().mColor[2];
+
+                        continue;
+                    }
+
+                    for (size_t i = 0; i < mGradient.size() - 1; i++) {
+                        if (mMesh[iRow][iColumn] > mGradient[i].mVal && mMesh[iRow][iColumn] < mGradient[i + 1].mVal) {
+                            float Multiplier = (mMesh[iRow][iColumn] - mGradient[i].mVal) / (mGradient[i + 1].mVal - mGradient[i].mVal);
+
+                            mVertices[iRow * Horiz + iColumn].mColor[0] = mGradient[i].mColor[0] + (mGradient[i + 1].mColor[0] - mGradient[i].mColor[0]) * Multiplier;
+                            mVertices[iRow * Horiz + iColumn].mColor[1] = mGradient[i].mColor[1] + (mGradient[i + 1].mColor[1] - mGradient[i].mColor[1]) * Multiplier;
+                            mVertices[iRow * Horiz + iColumn].mColor[2] = mGradient[i].mColor[2] + (mGradient[i + 1].mColor[2] - mGradient[i].mColor[2]) * Multiplier;
+
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        //----------//
+
+        VkDeviceSize    BufferSize              = sizeof(Vertex) * mVertices.size();
+        VkBuffer        StagingBuffer;
+        VkDeviceMemory  StagingBufferMemory;
+        void*           Data;
+
+        createBuffer(
+                BufferSize,
+                VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                &StagingBuffer,
+                &StagingBufferMemory
+        );
+
+        vkMapMemory(mLogicalGPU, StagingBufferMemory, 0, BufferSize, 0, &Data);
+        memcpy(Data, mVertices.data(), static_cast <size_t>(BufferSize));
+        vkUnmapMemory(mLogicalGPU, StagingBufferMemory);
+
+        copyBuffer(mTransferQueue, mCommandPool, StagingBuffer, mVertexBuffers[iNum], BufferSize);
+
+        vkDestroyBuffer(mLogicalGPU, StagingBuffer, nullptr);
+        vkFreeMemory(mLogicalGPU, StagingBufferMemory, nullptr);
+    }
 private:
     struct ColorPoint {
         float mVal;
@@ -139,6 +208,9 @@ private:
     std::array <uint32_t, (Horiz - 1) * (Vert - 1) * 3 * 2>     mIndices;                                               //---(n-1 * (n-1) quads that consist of 2 triangles drawn with 6 indices---//
 
     std::vector <ColorPoint>                                    mGradient;
+
+
+    std::default_random_engine generator;
 };
 //-----------------------------//
 #endif
