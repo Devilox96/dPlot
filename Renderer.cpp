@@ -42,62 +42,15 @@ void Renderer::init() {
         createFrameBuffers();
         createCommandPool();
 
-        std::vector <dVulkanMesh::Vertex> meshVertices {
-                {{  -0.1f,  -0.4f,  0.0f}, {1.0f,   0.0f,   0.0f}},
-                {{  -0.1f,  0.4f,   0.0f}, {0.0f,   1.0f,   0.0f}},
-                {{  -0.9f,  0.4f,   0.0f}, {0.0f,   0.0f,   1.0f}},
-                {{  -0.9f,  -0.4f,  0.0f}, {1.0f,   1.0f,   0.0f}}
-        };
-
-        std::vector <dVulkanMesh::Vertex> meshVertices2 {
-                {{  0.9f,   -0.3f,  0.0f}, {1.0f,   0.0f,   0.0f}},
-                {{  0.9f,   0.1f,   0.0f}, {0.0f,   1.0f,   0.0f}},
-                {{  0.1f,   0.3f,   0.0f}, {0.0f,   0.0f,   1.0f}},
-                {{  0.1f,   -0.3f,  0.0f}, {1.0f,   1.0f,   0.0f}}
-        };
-
-        std::vector <uint32_t> meshIndices {
-                0, 1, 2,
-                2, 3, 0
-        };
-
-
-        dVulkanMesh FirstMesh(mGPU, mLogicalGPU, mGraphicsQueue, mGraphicsCommandPool, meshVertices, meshIndices);
-        dVulkanMesh SecondMesh(mGPU, mLogicalGPU, mGraphicsQueue, mGraphicsCommandPool, meshVertices2, meshIndices);
-
-        mMeshList.reserve(2);
-
-        mMeshList.emplace_back(FirstMesh);
-        mMeshList.emplace_back(SecondMesh);
-
-        mPlots[0] -> setVulkanStuff(mGPU, mLogicalGPU, mGraphicsQueue, mGraphicsCommandPool);
-
         //----------//
 
-        mPlots[0] -> addColor(9500.0, 0.0, 0.0, 0.5);
-        mPlots[0] -> addColor(9600, 0.0, 0.0, 1.0);
-        mPlots[0] -> addColor(9800, 0.0, 1.0, 1.0);
-        mPlots[0] -> addColor(10200, 1.0, 1.0, 0.0);
-        mPlots[0] -> addColor(10400, 1.0, 0.0, 0.0);
-        mPlots[0] -> addColor(10500, 0.5, 0.0, 0.0);
-
-        mPlots[0] -> generateBuffers();
-
-//        mTestPlot = new dDensityPlot2D<360, 50>(-1.0f, -1.0f, 0.0f, 2.0f, 2.0f, mGPU, mLogicalGPU, mGraphicsQueue, mGraphicsCommandPool);
-//        mTestPlot -> addColor(9500.0, 0.0, 0.0, 0.5);
-//        mTestPlot -> addColor(9600, 0.0, 0.0, 1.0);
-//        mTestPlot -> addColor(9800, 0.0, 1.0, 1.0);
-//        mTestPlot -> addColor(10200, 1.0, 1.0, 0.0);
-//        mTestPlot -> addColor(10400, 1.0, 0.0, 0.0);
-//        mTestPlot -> addColor(10500, 0.5, 0.0, 0.0);
-//
-//        mTestPlot -> generateBuffers();
+        //---Don't know if I ever need to set different queues and command pools---//
+        for (auto iPlot : mPlots) {
+            iPlot -> setVulkanStuff(mGPU, mLogicalGPU, mGraphicsQueue, mGraphicsCommandPool);
+            iPlot -> generateBuffers();
+        }
 
         mPlotBuffers.resize(mSwapchainFrameBuffers.size());
-
-//        for (size_t i = 0; i < 3; i++) {
-//            mPlotBuffers[i] = mTestPlot -> getVertexBuffer(i);
-//        }
 
         for (size_t i = 0; i < 3; i++) {
             mPlotBuffers[i] = mPlots[0] -> getVertexBuffer(i);
@@ -122,9 +75,6 @@ void Renderer::draw(const std::vector <std::vector <float>>& tNewData) {
 
     uint32_t ImageIndex;
     vkAcquireNextImageKHR(mLogicalGPU, mSwapchain, std::numeric_limits <uint64_t>::max(), mImageAvailable[mCurrentFrame], VK_NULL_HANDLE, &ImageIndex);
-
-//    mTestPlot -> randomize(ImageIndex);
-//    mTestPlot -> updateValues(tNewData, ImageIndex);
 
     dynamic_cast<dDensityPlot2D*>(mPlots[0]) -> updateValues(tNewData, ImageIndex);
 
@@ -165,10 +115,13 @@ void Renderer::draw(const std::vector <std::vector <float>>& tNewData) {
     mCurrentFrame = (mCurrentFrame + 1) % mMaxQueueImages;
 }
 
-void Renderer::addDensityPlot2D(float tPosX,                             float tPosY,                            float tPosZ,
-                                float tWidth,                            float tHeight,
-                                size_t tHoriz,                           size_t tVert) {
+void Renderer::addDensityPlot2D(float tPosX,    float tPosY,    float tPosZ,
+                                float tWidth,   float tHeight,
+                                size_t tHoriz,  size_t tVert) {
     mPlots.emplace_back(new dDensityPlot2D(tPosX, tPosY, tPosZ, tWidth, tHeight, tHoriz, tVert));
+}
+void Renderer::addPlotGradientColor(size_t tPlotNum, float tVal, float tRed, float tGreen, float tBlue) {
+    mPlots[tPlotNum] -> addColor(tVal, tRed, tGreen, tBlue);
 }
 //-----------------------------//
 void Renderer::createInstance() {
@@ -224,7 +177,7 @@ void Renderer::setPhysicalDevice() {
         vkGetPhysicalDeviceProperties(iDevice, &Prop);
         std::cout << Prop.deviceName << std::endl;
 
-        if (    getGraphicsQueueFamilyIndex(iDevice) != -1                          &&
+        if (    getGraphicsQueueFamilyIndex(iDevice) != -1                  &&
                 getPresentationQueueFamilyIndex(iDevice, mSurface) != -1    &&
                 checkDeviceExtensions(iDevice)) {
             mGPU = iDevice;
@@ -813,8 +766,8 @@ void Renderer::recordCommands() {
 void Renderer::destroyAll() {
     vkDeviceWaitIdle(mLogicalGPU);
 
-    for (auto& iMesh : mMeshList) {
-        iMesh.destroyBuffers();
+    for (auto iPlot : mPlots) {
+        iPlot -> destroyBuffers();
     }
 
     for (size_t i = 0; i < mMaxQueueImages; i++) {

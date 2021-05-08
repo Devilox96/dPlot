@@ -32,11 +32,14 @@ public:
     void setDebugMode(bool tState);
 
     void init();
+
+    ///---TODO: make outside casting to deal with plots' dimensions---///
     void draw(const std::vector <std::vector <float>>& tNewData);
 
-    void addDensityPlot2D(float tPosX,                             float tPosY,                            float tPosZ,
-                          float tWidth,                            float tHeight,
-                          size_t tHoriz,                           size_t tVert);
+    void addDensityPlot2D(float tPosX,      float tPosY,    float tPosZ,
+                          float tWidth,     float tHeight,
+                          size_t tHoriz,    size_t tVert);
+    void addPlotGradientColor(size_t tPlotNum, float tVal, float tRed, float tGreen, float tBlue);
 private:
     std::string                     mAppName;
     uint32_t                        mAppVersion                     = 0;
@@ -46,10 +49,7 @@ private:
     //----------//
 
     SDL_Window*                     mWindow                         = nullptr;
-    std::vector <dVulkanMesh>       mMeshList;
     size_t                          mCurrentFrame                   = 0;
-
-//    dDensityPlot2D <360, 50>*       mTestPlot                       = nullptr;
 
     std::vector <VkBuffer*>         mPlotBuffers;
 
