@@ -33,6 +33,10 @@ public:
 
     void init();
     void draw(const std::vector <std::vector <float>>& tNewData);
+
+    void addDensityPlot2D(float tPosX,                             float tPosY,                            float tPosZ,
+                          float tWidth,                            float tHeight,
+                          size_t tHoriz,                           size_t tVert);
 private:
     std::string                     mAppName;
     uint32_t                        mAppVersion                     = 0;
@@ -45,7 +49,7 @@ private:
     std::vector <dVulkanMesh>       mMeshList;
     size_t                          mCurrentFrame                   = 0;
 
-    dDensityPlot2D <360, 50>*       mTestPlot                       = nullptr;
+//    dDensityPlot2D <360, 50>*       mTestPlot                       = nullptr;
 
     std::vector <VkBuffer*>         mPlotBuffers;
 
@@ -87,6 +91,10 @@ private:
     std::vector <VkSemaphore>       mImageAvailable;
     std::vector <VkSemaphore>       mRenderFinished;
     std::vector <VkFence>           mDrawFences;
+
+    //----------//
+
+    std::vector <dPlotMeshBase*>    mPlots;
 
     //----------//
 

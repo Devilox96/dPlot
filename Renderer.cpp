@@ -70,21 +70,40 @@ void Renderer::init() {
         mMeshList.emplace_back(FirstMesh);
         mMeshList.emplace_back(SecondMesh);
 
-        mTestPlot = new dDensityPlot2D<360, 50>(-1.0f, -1.0f, 0.0f, 2.0f, 2.0f, mGPU, mLogicalGPU, mGraphicsQueue, mGraphicsCommandPool);
-        mTestPlot -> addColor(9500.0, 0.0, 0.0, 0.5);
-        mTestPlot -> addColor(9600, 0.0, 0.0, 1.0);
-        mTestPlot -> addColor(9800, 0.0, 1.0, 1.0);
-        mTestPlot -> addColor(10200, 1.0, 1.0, 0.0);
-        mTestPlot -> addColor(10400, 1.0, 0.0, 0.0);
-        mTestPlot -> addColor(10500, 0.5, 0.0, 0.0);
+        mPlots[0] -> setVulkanStuff(mGPU, mLogicalGPU, mGraphicsQueue, mGraphicsCommandPool);
 
-        mTestPlot -> generateBuffers();
+        //----------//
+
+        mPlots[0] -> addColor(9500.0, 0.0, 0.0, 0.5);
+        mPlots[0] -> addColor(9600, 0.0, 0.0, 1.0);
+        mPlots[0] -> addColor(9800, 0.0, 1.0, 1.0);
+        mPlots[0] -> addColor(10200, 1.0, 1.0, 0.0);
+        mPlots[0] -> addColor(10400, 1.0, 0.0, 0.0);
+        mPlots[0] -> addColor(10500, 0.5, 0.0, 0.0);
+
+        mPlots[0] -> generateBuffers();
+
+//        mTestPlot = new dDensityPlot2D<360, 50>(-1.0f, -1.0f, 0.0f, 2.0f, 2.0f, mGPU, mLogicalGPU, mGraphicsQueue, mGraphicsCommandPool);
+//        mTestPlot -> addColor(9500.0, 0.0, 0.0, 0.5);
+//        mTestPlot -> addColor(9600, 0.0, 0.0, 1.0);
+//        mTestPlot -> addColor(9800, 0.0, 1.0, 1.0);
+//        mTestPlot -> addColor(10200, 1.0, 1.0, 0.0);
+//        mTestPlot -> addColor(10400, 1.0, 0.0, 0.0);
+//        mTestPlot -> addColor(10500, 0.5, 0.0, 0.0);
+//
+//        mTestPlot -> generateBuffers();
 
         mPlotBuffers.resize(mSwapchainFrameBuffers.size());
 
+//        for (size_t i = 0; i < 3; i++) {
+//            mPlotBuffers[i] = mTestPlot -> getVertexBuffer(i);
+//        }
+
         for (size_t i = 0; i < 3; i++) {
-            mPlotBuffers[i] = mTestPlot -> getVertexBuffer(i);
+            mPlotBuffers[i] = mPlots[0] -> getVertexBuffer(i);
         }
+
+        //----------//
 
         createCommandBuffers();
         recordCommands();
@@ -95,6 +114,8 @@ void Renderer::init() {
         throw;
     }
 }
+
+///---TODO: fix this function---///
 void Renderer::draw(const std::vector <std::vector <float>>& tNewData) {
     vkWaitForFences(mLogicalGPU, 1, &mDrawFences[mCurrentFrame], VK_TRUE, std::numeric_limits <uint64_t>::max());
     vkResetFences(mLogicalGPU, 1, &mDrawFences[mCurrentFrame]);
@@ -103,7 +124,9 @@ void Renderer::draw(const std::vector <std::vector <float>>& tNewData) {
     vkAcquireNextImageKHR(mLogicalGPU, mSwapchain, std::numeric_limits <uint64_t>::max(), mImageAvailable[mCurrentFrame], VK_NULL_HANDLE, &ImageIndex);
 
 //    mTestPlot -> randomize(ImageIndex);
-    mTestPlot -> updateValues(tNewData, ImageIndex);
+//    mTestPlot -> updateValues(tNewData, ImageIndex);
+
+    dynamic_cast<dDensityPlot2D*>(mPlots[0]) -> updateValues(tNewData, ImageIndex);
 
     VkPipelineStageFlags WaitStages[] {
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
@@ -140,6 +163,12 @@ void Renderer::draw(const std::vector <std::vector <float>>& tNewData) {
     }
 
     mCurrentFrame = (mCurrentFrame + 1) % mMaxQueueImages;
+}
+
+void Renderer::addDensityPlot2D(float tPosX,                             float tPosY,                            float tPosZ,
+                                float tWidth,                            float tHeight,
+                                size_t tHoriz,                           size_t tVert) {
+    mPlots.emplace_back(new dDensityPlot2D(tPosX, tPosY, tPosZ, tWidth, tHeight, tHoriz, tVert));
 }
 //-----------------------------//
 void Renderer::createInstance() {
@@ -766,8 +795,11 @@ void Renderer::recordCommands() {
 
 //            vkCmdBindVertexBuffers(mCommandBuffers[i], 0, 1, VertexBuffers, Offsets);
             vkCmdBindVertexBuffers(mCommandBuffers[i], 0, 1, mPlotBuffers[i], Offsets);
-            vkCmdBindIndexBuffer(mCommandBuffers[i], *mTestPlot -> getIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
-            vkCmdDrawIndexed(mCommandBuffers[i], static_cast<uint32_t>(mTestPlot -> getIndexCount()), 1, 0, 0, 0);
+//            vkCmdBindIndexBuffer(mCommandBuffers[i], *mTestPlot -> getIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
+//            vkCmdDrawIndexed(mCommandBuffers[i], static_cast<uint32_t>(mTestPlot -> getIndexCount()), 1, 0, 0, 0);
+
+            vkCmdBindIndexBuffer(mCommandBuffers[i], *mPlots[0] -> getIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
+            vkCmdDrawIndexed(mCommandBuffers[i], static_cast<uint32_t>(mPlots[0] -> getIndexCount()), 1, 0, 0, 0);
         }
 
         vkCmdEndRenderPass(mCommandBuffers[i]);
